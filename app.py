@@ -28,6 +28,25 @@ user_schema = UserSchema()
 signup_schema = SignupSchema()
 login_schema = LoginSchema()
 
+def flatten_validation_errors(messages):
+    """Turn marshmallow's error dict into a flat list of strings, since
+    the frontend does err.errors.map(...) which needs an array, not a
+    dict."""
+    flat = []
+
+    def _walk(node, field_name=None):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                _walk(value, field_name=key)
+        elif isinstance(node, (list, tuple)):
+            for item in node:
+                _walk(item, field_name=field_name)
+        else:
+            message = str(node)
+            flat.append(f"{field_name}: {message}" if field_name else message)
+
+    _walk(messages)
+    return flat
 
 
 # Auth routes
@@ -44,7 +63,7 @@ class Signup(Resource):
         try:
             data = signup_schema.load(json_data)
         except ValidationError as err:
-            return {"errors": err.messages}, 400
+            return {"errors": flatten_validation_errors(err.messages)}, 400
 
         # Enforce uniqueness ourselves first so we can return a clean,
         # specific error message instead of letting a raw database
@@ -76,7 +95,7 @@ class Login(Resource):
         try:
             data = login_schema.load(json_data)
         except ValidationError as err:
-            return {"errors": err.messages}, 400
+            return {"errors": flatten_validation_errors(err.messages)}, 400
 
         user = User.query.filter_by(username=data["username"]).first()
 
@@ -261,4 +280,7 @@ api.add_resource(MoodEntryDetail, "/mood_entries/<int:entry_id>")
 
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    # Must match the "proxy" value in client-with-jwt/package.json,
+    # or the frontend's relative fetch("/login") etc. will hit the
+    # React dev server instead of this API and 404.
+    app.run(port=5555, debug=True)
