@@ -49,6 +49,49 @@ Pipfile / Pipfile.lock
 this project, is incompatible with Python 3.14+ — see [Known
 gotchas](#known-gotchas) below if you hit an `ast.Str` error).
 
+### Installing Pipenv (if you don't have it yet)
+
+**macOS / Linux:**
+```bash
+# Don't use `sudo apt install pipenv` -- it's often outdated on Debian/Ubuntu.
+sudo apt install pipx -y
+pipx ensurepath
+# close and reopen your terminal, then:
+pipx install pipenv
+```
+If `pipx` isn't available, this also works:
+```bash
+pip3 install --user pipenv --break-system-packages
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Windows:**
+```bash
+pip install pipenv
+```
+
+Confirm it worked: `pipenv --version`
+
+### Installing Python 3.11 (if you don't have it yet)
+
+**macOS / Linux (Ubuntu/Debian):**
+```bash
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt update
+sudo apt install python3.11 python3.11-venv python3.11-distutils -y
+```
+
+**Windows:** download the Python 3.11.x installer from
+[python.org/downloads](https://www.python.org/downloads/) (not the
+newest version shown by default — find 3.11 in the release list) and
+check "Add python.exe to PATH" during install.
+
+Confirm it worked: `python3.11 --version` (Linux/Mac) or `py -0p`
+(Windows, should list `3.11` with a path).
+
+### Installing the project dependencies
+
 ```bash
 git clone <your-repo-url>
 cd MOOD-TRACKER
@@ -56,6 +99,22 @@ cd MOOD-TRACKER
 pipenv install --python 3.11   # or any 3.9-3.13 interpreter you have
 pipenv install --dev           # installs pytest
 ```
+
+> **If pipenv warns about a `python_version` other than 3.11** (e.g.
+> `"Your Pipfile requires python_version 3.14..."`), open `Pipfile` and
+> check the `[requires]` section at the bottom -- it should say
+> `python_version = "3.11"`. If it says something else, that's a
+> leftover from an earlier `pipenv install` run on a different machine
+> that auto-wrote whatever Python was active at the time. Fix it with:
+> ```bash
+> sed -i 's/python_version = ".*"/python_version = "3.11"/' Pipfile
+> pipenv lock
+> git add Pipfile Pipfile.lock
+> git commit -m "Fix Pipfile python_version pin"
+> git push
+> ```
+> Push the fix so the next clone (another machine, a teammate, a
+> grader) doesn't hit the same issue.
 
 Set up the database:
 
@@ -102,7 +161,7 @@ through the dev server's proxy.
 
 ## API Reference
 
-All request/response bodies are JSON. Endpoints marked require
+All request/response bodies are JSON. Endpoints marked **** require
 `Authorization: Bearer <token>`.
 
 ### Auth
@@ -180,10 +239,15 @@ strings (this specific shape is required by the frontend, which calls
 
 ## Known gotchas
 
-- **`AttributeError: module 'ast' has no attribute 'Str'`** — this
-  means you're running Python 3.14+. Werkzeug 2.2.2 (pinned by this
-  assignment) doesn't support it. Install Python 3.9–3.13 and run
-  `pipenv install --python <version>`.
+- **`AttributeError: module 'ast' has no attribute 'Str'`** — you're
+  running Python 3.14+. Werkzeug 2.2.2 (pinned by this assignment)
+  doesn't support it. See the "Installing Python 3.11" and the
+  `Pipfile` warning box in the Installation section above.
+- **`error: externally-managed-environment` when running
+  `pip install --user pipenv` on Linux** — recent Debian/Ubuntu blocks
+  `pip` from touching the system Python directly (PEP 668). Use `pipx`
+  instead (see Installation section above), or add
+  `--break-system-packages` to the pip command.
 - **SQLite file location** — Flask-SQLAlchemy puts `app.db` inside an
   `instance/` folder, not the project root, even though the config just
   says `sqlite:///app.db`. This is normal.
@@ -192,5 +256,5 @@ strings (this specific shape is required by the frontend, which calls
   doesn't understand `VAR=value command` syntax. Run
   `PORT=4000 npx react-scripts start` directly instead.
 
-  # AUTHOR
+  # Author
   -Samwel Macharia
